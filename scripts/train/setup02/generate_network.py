@@ -22,10 +22,11 @@ def mknet(parameter, name):
     assert unet_model == 'vanilla' or unet_model == 'dh_unet', \
         'unknown unetmodel {}'.format(unet_model)
 
-    tf.reset_default_graph()
+    # Use tf.compat.v1 for compatibility
+    tf.compat.v1.reset_default_graph()
 
     # d, h, w
-    raw = tf.placeholder(tf.float32, shape=input_shape)
+    raw = tf.compat.v1.placeholder(tf.float32, shape=input_shape)
 
     # b=1, c=1, d, h, w
     raw_batched = tf.reshape(raw, (1, 1) + input_shape)
@@ -68,49 +69,48 @@ def mknet(parameter, name):
     # c=3, d, h, w
     pred_partner_vectors = tf.reshape(partner_vectors_batched,
                                       partner_vectors_shape)
-    gt_partner_vectors = tf.placeholder(tf.float32, shape=partner_vectors_shape)
-    vectors_mask = tf.placeholder(tf.float32,
+    gt_partner_vectors = tf.compat.v1.placeholder(tf.float32, shape=partner_vectors_shape)
+    vectors_mask = tf.compat.v1.placeholder(tf.float32,
                                   shape=syn_indicator_shape)  # d,h,w
-    gt_mask = tf.placeholder(tf.bool, shape=syn_indicator_shape)  # d,h,w
+    gt_mask = tf.compat.v1.placeholder(tf.bool, shape=syn_indicator_shape)  # d,h,w
     vectors_mask = tf.cast(vectors_mask, tf.bool)
 
     # d, h, w
     pred_syn_indicator = tf.reshape(syn_indicator_batched,
                                     syn_indicator_shape)  # squeeze batch dimension
-    gt_syn_indicator = tf.placeholder(tf.float32, shape=syn_indicator_shape)
-    indicator_weight = tf.placeholder(tf.float32, shape=syn_indicator_shape)
+    gt_syn_indicator = tf.compat.v1.placeholder(tf.float32, shape=syn_indicator_shape)
+    indicator_weight = tf.compat.v1.placeholder(tf.float32, shape=syn_indicator_shape)
 
-    partner_vectors_loss_mask = tf.losses.mean_squared_error(
+    partner_vectors_loss_mask = tf.compat.v1.losses.mean_squared_error(
         gt_partner_vectors,
         pred_partner_vectors,
         tf.reshape(
             vectors_mask,
             (1,) + syn_indicator_shape),
-        reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
+        reduction=tf.compat.v1.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
 
-    syn_indicator_loss_weighted = tf.losses.sigmoid_cross_entropy(
+    syn_indicator_loss_weighted = tf.compat.v1.losses.sigmoid_cross_entropy(
         gt_syn_indicator,
         pred_syn_indicator,
         indicator_weight,
-        reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
+        reduction=tf.compat.v1.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
     pred_syn_indicator_out = tf.sigmoid(pred_syn_indicator)  # For output.
 
     iteration = tf.Variable(1.0, name='training_iteration', trainable=False)
     loss = m_loss_scale * syn_indicator_loss_weighted + d_loss_scale * partner_vectors_loss_mask
 
     # Monitor in tensorboard.
-
-    tf.summary.scalar('loss', loss)
-    tf.summary.scalar('loss_vectors', partner_vectors_loss_mask)
-    tf.summary.scalar('loss_indicator', syn_indicator_loss_weighted)
-    summary = tf.summary.merge_all()
+    tf.compat.v1.summary.scalar('loss', loss)
+    tf.compat.v1.summary.scalar('loss_vectors', partner_vectors_loss_mask)
+    tf.compat.v1.summary.scalar('loss_indicator', syn_indicator_loss_weighted)
+    summary = tf.compat.v1.summary.merge_all()
 
     # l=1, d, h, w
     print("input shape : %s" % (input_shape,))
     print("output shape: %s" % (output_shape,))
 
     # Train Ops.
-    opt = tf.train.AdamOptimizer(
+    opt = tf.compat.v1.train.AdamOptimizer(
         learning_rate=learning_rate,
         beta1=0.95,
         beta2=0.999,
@@ -120,7 +120,7 @@ def mknet(parameter, name):
     gvs_ = opt.compute_gradients(loss)
     optimizer = opt.apply_gradients(gvs_, global_step=iteration)
 
-    tf.train.export_meta_graph(filename=name + '.meta')
+    tf.compat.v1.train.export_meta_graph(filename=name + '.meta')
 
     names = {
         'raw': raw.name,
@@ -152,7 +152,7 @@ def mknet(parameter, name):
         json.dump(names, f)
 
     total_parameters = 0
-    for variable in tf.trainable_variables():
+    for variable in tf.compat.v1.trainable_variables():
         # shape is an array of tf.Dimension
         shape = variable.get_shape()
         variable_parameters = 1

@@ -46,22 +46,33 @@ from source (creating a conda env is optional, but recommended).
 - In a terminal:
 
 ```bash
-conda create -n <conda_env_name> python=3.6
-source activate <conda_env_name>
-cd synful
+conda create -n <conda_env_name> python=3.8
+conda activate <conda_env_name>
+cd synful_cuda12x
 pip install -r requirements.txt
 python setup.py install
 ```
-If you are interested in using the package for training and prediction, additionally add tensorflow and funlib.learn.tensorflow to your conda env:
 
+**Note**: This repository has been updated to use the latest versions of Gunpowder, Daisy, and Funlib packages while maintaining TensorFlow 1.15 compatibility for the existing trained models. The code has been modernized with `tf.compat.v1` calls to provide a clear upgrade path to TensorFlow 2.x when desired.
+
+## Modernization Updates
+
+This version includes the following modernization improvements:
+
+- ✅ **Latest Package Versions**: Updated to use the latest Gunpowder, Daisy, and Funlib packages from GitHub main branches
+- ✅ **Installation Compatibility**: Fixed git:// protocol issues by using HTTPS URLs  
+- ✅ **TensorFlow Compatibility**: Added `tf.compat.v1` prefixes for future TensorFlow 2.x migration
+- ✅ **Scientific Consistency**: Maintains full compatibility with existing trained models and scientific results
+- ✅ **Enhanced Features**: Access to latest bug fixes and performance improvements in dependencies
+
+For GPU support:
 ```bash
-conda install tensorflow-gpu=1.14 cudatoolkit=10.0
-pip install git+git://github.com/funkelab/funlib.learn.tensorflow@0712fee6b6c083c6bfc86e76f475b2e40b3c64f2
-
+# The requirements.txt already includes tensorflow-gpu
+# Ensure you have the appropriate CUDA drivers installed
 ```
 
 #### Install time
-Installation should take around 5 mins (including 3 mins for the tensorflow installation).
+Installation should take around 5-10 mins depending on network speed.
 
 
 Training
