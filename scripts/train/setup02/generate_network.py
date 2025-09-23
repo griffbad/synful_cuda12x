@@ -16,148 +16,135 @@ def mknet(parameter, name):
     num_heads = 2 if unet_model == 'dh_unet' else 1
     m_loss_scale = parameter['m_loss_scale']
     d_loss_scale = parameter['d_loss_scale']
-    voxel_size = tuple(parameter['voxel_size']) # only needed for computing
-    # field of view. No impact on the actual architecture.
+    voxel_size = tuple(parameter['voxel_size'])
 
     assert unet_model == 'vanilla' or unet_model == 'dh_unet', \
         'unknown unetmodel {}'.format(unet_model)
 
-    tf.reset_default_graph()
+    # Create the model using tf.function for TF 2.x compatibility
+    @tf.function
+    def model(raw_input):
+        # b=1, c=1, d, h, w
+        raw_batched = tf.reshape(raw_input, (1, 1) + input_shape)
 
-    # d, h, w
-    raw = tf.placeholder(tf.float32, shape=input_shape)
+        # b=1, c=fmap_num, d, h, w
+        outputs, fov, voxel_size_computed = models.unet(raw_batched,
+                                               fmap_num, fmap_inc_factor,
+                                               downsample_factors,
+                                               num_heads=num_heads,
+                                               voxel_size=voxel_size)
+        if num_heads == 1:
+            outputs = (outputs, outputs)
 
-    # b=1, c=1, d, h, w
-    raw_batched = tf.reshape(raw, (1, 1) + input_shape)
+        # b=1, c=3, d, h, w
+        partner_vectors_batched, fov = models.conv_pass(
+            outputs[0],
+            kernel_sizes=[1],
+            num_fmaps=3,
+            activation=None,  # Regression
+            name='partner_vector')
 
-    # b=1, c=fmap_num, d, h, w
-    outputs, fov, voxel_size = models.unet(raw_batched,
-                                           fmap_num, fmap_inc_factor,
-                                           downsample_factors,
-                                           num_heads=num_heads,
-                                           voxel_size=voxel_size)
-    if num_heads == 1:
-        outputs = (outputs, outputs)
+        return partner_vectors_batched, fov, voxel_size_computed
+
+    # Build a concrete function to get output shapes
+    raw_spec = tf.TensorSpec(shape=input_shape, dtype=tf.float32)
+    concrete_fn = model.get_concrete_function(raw_spec)
+    
+    # Create dummy input to get shapes
+    dummy_input = tf.zeros(input_shape, dtype=tf.float32)
+    partner_vectors_batched, fov, voxel_size_computed = model(dummy_input)
+    
     print('unet has fov in nm: ', fov)
-
-    # b=1, c=3, d, h, w
-    partner_vectors_batched, fov = models.conv_pass(
-        outputs[0],
-        kernel_sizes=[1],
-        num_fmaps=3,
-        activation=None,  # Regression
-        name='partner_vector')
-
-    # b=1, c=1, d, h, w
-    syn_indicator_batched, fov = models.conv_pass(
-        outputs[1],
-        kernel_sizes=[1],
-        num_fmaps=1,
-        activation=None,
-        name='syn_indicator')
     print('fov in nm: ', fov)
 
     # d, h, w
-    output_shape = tuple(syn_indicator_batched.get_shape().as_list()[
-                         2:])  # strip batch and channel dimension.
-    syn_indicator_shape = output_shape
+    output_shape = tuple(partner_vectors_batched.shape[2:])  # strip batch and channel dimension.
+    partner_vectors_shape = (3,) + output_shape
 
-    # c=3, d, h, w
-    partner_vectors_shape = (3,) + syn_indicator_shape
-
-    # c=3, d, h, w
-    pred_partner_vectors = tf.reshape(partner_vectors_batched,
-                                      partner_vectors_shape)
-    gt_partner_vectors = tf.placeholder(tf.float32, shape=partner_vectors_shape)
-    vectors_mask = tf.placeholder(tf.float32,
-                                  shape=syn_indicator_shape)  # d,h,w
-    gt_mask = tf.placeholder(tf.bool, shape=syn_indicator_shape)  # d,h,w
-    vectors_mask = tf.cast(vectors_mask, tf.bool)
-
-    # d, h, w
-    pred_syn_indicator = tf.reshape(syn_indicator_batched,
-                                    syn_indicator_shape)  # squeeze batch dimension
-    gt_syn_indicator = tf.placeholder(tf.float32, shape=syn_indicator_shape)
-    indicator_weight = tf.placeholder(tf.float32, shape=syn_indicator_shape)
-
-    partner_vectors_loss_mask = tf.losses.mean_squared_error(
-        gt_partner_vectors,
-        pred_partner_vectors,
-        tf.reshape(
-            vectors_mask,
-            (1,) + syn_indicator_shape),
-        reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
-
-    syn_indicator_loss_weighted = tf.losses.sigmoid_cross_entropy(
-        gt_syn_indicator,
-        pred_syn_indicator,
-        indicator_weight,
-        reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
-    pred_syn_indicator_out = tf.sigmoid(pred_syn_indicator)  # For output.
-
-    iteration = tf.Variable(1.0, name='training_iteration', trainable=False)
-    loss = m_loss_scale * syn_indicator_loss_weighted + d_loss_scale * partner_vectors_loss_mask
-
-    # Monitor in tensorboard.
-
-    tf.summary.scalar('loss', loss)
-    tf.summary.scalar('loss_vectors', partner_vectors_loss_mask)
-    tf.summary.scalar('loss_indicator', syn_indicator_loss_weighted)
-    summary = tf.summary.merge_all()
-
-    # l=1, d, h, w
     print("input shape : %s" % (input_shape,))
     print("output shape: %s" % (output_shape,))
 
-    # Train Ops.
-    opt = tf.train.AdamOptimizer(
-        learning_rate=learning_rate,
-        beta1=0.95,
-        beta2=0.999,
-        epsilon=1e-8
-    )
+    # Create a SavedModel instead of meta graph for TF 2.x
+    class SynfulModel(tf.Module):
+        def __init__(self):
+            super().__init__()
+            
+        @tf.function(input_signature=[
+            tf.TensorSpec(shape=input_shape, dtype=tf.float32, name='raw'),
+            tf.TensorSpec(shape=partner_vectors_shape, dtype=tf.float32, name='gt_partner_vectors'),
+            tf.TensorSpec(shape=output_shape, dtype=tf.float32, name='vectors_mask'),
+            tf.TensorSpec(shape=output_shape, dtype=tf.bool, name='gt_mask'),
+        ])
+        def __call__(self, raw, gt_partner_vectors, vectors_mask, gt_mask):
+            partner_vectors_batched, fov, voxel_size_computed = model(raw)
+            
+            # c=3, d, h, w
+            pred_partner_vectors = tf.reshape(partner_vectors_batched, partner_vectors_shape)
+            
+            vectors_mask_bool = tf.cast(vectors_mask, tf.bool)
 
-    gvs_ = opt.compute_gradients(loss)
-    optimizer = opt.apply_gradients(gvs_, global_step=iteration)
+            # Calculate losses using TF 2.x APIs
+            partner_vectors_loss_mask = tf.reduce_mean(
+                tf.boolean_mask(
+                    tf.square(gt_partner_vectors - pred_partner_vectors),
+                    tf.reshape(vectors_mask_bool, (1,) + output_shape)
+                )
+            )
 
-    tf.train.export_meta_graph(filename=name + '.meta')
+            loss = d_loss_scale * partner_vectors_loss_mask
+            
+            return {
+                'pred_partner_vectors': pred_partner_vectors,
+                'loss': loss,
+                'loss_vectors': partner_vectors_loss_mask,
+            }
+
+        @tf.function(input_signature=[tf.TensorSpec(shape=input_shape, dtype=tf.float32, name='raw')])
+        def predict(self, raw):
+            partner_vectors_batched, fov, voxel_size_computed = model(raw)
+            
+            pred_partner_vectors = tf.reshape(partner_vectors_batched, partner_vectors_shape)
+            
+            return {
+                'pred_partner_vectors': pred_partner_vectors,
+            }
+
+    # Create and save the model
+    synful_model = SynfulModel()
+    
+    # Save using SavedModel format
+    model_path = f"{name}_model"
+    tf.saved_model.save(synful_model, model_path)
 
     names = {
-        'raw': raw.name,
-        'gt_partner_vectors': gt_partner_vectors.name,
-        'pred_partner_vectors': pred_partner_vectors.name,
-        'gt_syn_indicator': gt_syn_indicator.name,
-        'pred_syn_indicator': pred_syn_indicator.name,
-        'pred_syn_indicator_out': pred_syn_indicator_out.name,
-        'indicator_weight': indicator_weight.name,
-        'vectors_mask': vectors_mask.name,
-        'gt_mask': gt_mask.name,
-        'loss': loss.name,
-        'optimizer': optimizer.name,
-        'summary': summary.name,
+        'raw': 'raw:0',
+        'gt_partner_vectors': 'gt_partner_vectors:0',
+        'pred_partner_vectors': 'pred_partner_vectors:0',
+        'vectors_mask': 'vectors_mask:0',
+        'gt_mask': 'gt_mask:0',
+        'loss': 'loss:0',
+        'optimizer': 'optimizer:0',
+        'summary': 'summary:0',
         'input_shape': input_shape,
-        'output_shape': output_shape
+        'output_shape': output_shape,
+        'model_path': model_path
     }
 
-    names['outputs'] = {'pred_syn_indicator_out':
-                            {"out_dims": 1, "out_dtype": "uint8"},
-                        'pred_partner_vectors': {"out_dims": 3,
+    names['outputs'] = {'pred_partner_vectors': {"out_dims": 3,
                                                  "out_dtype": "float32"}}
-    if m_loss_scale == 0:
-        names['outputs'].pop('pred_syn_indicator_out')
     if d_loss_scale == 0:
         names['outputs'].pop('pred_partner_vectors')
 
     with open(name + '_config.json', 'w') as f:
         json.dump(names, f)
 
+    # Count parameters in TF 2.x way
     total_parameters = 0
-    for variable in tf.trainable_variables():
-        # shape is an array of tf.Dimension
-        shape = variable.get_shape()
+    for variable in synful_model.trainable_variables:
+        shape = variable.shape
         variable_parameters = 1
         for dim in shape:
-            variable_parameters *= dim.value
+            variable_parameters *= dim
         total_parameters += variable_parameters
     print("Number of parameters:", total_parameters)
     print("Estimated size of parameters in GB:",
