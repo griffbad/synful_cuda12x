@@ -1,7 +1,8 @@
 import json
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 from funlib.learn.tensorflow import models
 
@@ -157,7 +158,9 @@ def mknet(parameter, name):
         shape = variable.get_shape()
         variable_parameters = 1
         for dim in shape:
-            variable_parameters *= dim.value
+            # Use tensor.shape.as_list() for TF 2.x compatibility
+            dim_value = dim if isinstance(dim, int) else dim.value
+            variable_parameters *= dim_value
         total_parameters += variable_parameters
     print("Number of parameters:", total_parameters)
     print("Estimated size of parameters in GB:",

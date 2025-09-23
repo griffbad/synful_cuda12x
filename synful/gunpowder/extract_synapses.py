@@ -1,4 +1,3 @@
-from __future__ import division
 
 from .. import detection, synapse, database
 from funlib.math import cantor_number
