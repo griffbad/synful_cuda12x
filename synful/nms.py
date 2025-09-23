@@ -1,5 +1,4 @@
-from scipy.ndimage import measurements, label, maximum_filter
-from scipy.ndimage.filters import gaussian_filter
+from scipy.ndimage import measurements, label, maximum_filter, gaussian_filter
 import math
 import numpy as np
 import time
