@@ -1,0 +1,20 @@
+{
+    "input_size": [48, 512, 512],
+    "downsample_factors": [[1, 2, 2], [1, 2, 2], [2, 2, 2], [2, 2, 2]],
+    "fmap_num": 8,
+    "fmap_inc_factor": 6,
+    "unet_model": "vanilla",
+    "learning_rate": 1e-4,
+    "loss_comb_type": "sum",
+    "m_loss_scale": 1.0,
+    "d_loss_scale": 1.0,
+    "reject_probability": 0.95,
+    "blob_radius": 10,
+    "max_iteration": 1000000,
+    "blob_mode": "ball",
+    "d_scale": 1,
+    "d_blob_radius": 100,
+    "cliprange": [7e-4, 0.9993],
+    "voxel_size": [40, 4, 4],
+    "_comment": "Optimized for NVIDIA 5090 with 24GB VRAM - increased network capacity and batch processing"
+}

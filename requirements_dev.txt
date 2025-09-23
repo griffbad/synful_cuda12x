@@ -1,3 +1,5 @@
-flake8
-pytest
-pytest-cov
+flake8>=6.0.0
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-xdist>=3.3.0  # For parallel test execution
+pytest-benchmark>=4.0.0  # For performance testing

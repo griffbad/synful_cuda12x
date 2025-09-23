@@ -1,4 +1,177 @@
-*.sw[pmno]
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
 *.pyc
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
 .coverage
-*.egg-info
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# TensorFlow and ML related
+*.ckpt
+*.ckpt.*
+*.meta
+*.pb
+*.pbtxt
+*.h5
+*.hdf5
+checkpoints/
+tensorboard/
+logs/
+snapshots/
+train_net_checkpoint_*
+test_net_checkpoint_*
+
+# Data files
+*.zarr/
+*.n5/
+*.hdf
+*.h5
+data/
+datasets/
+
+# Generated config files
+*_config.json
+parameter_optimized.json
+train_net.meta
+test_net.meta
+
+# Performance and benchmark results
+synful_performance_results.json
+benchmark_results/
+
+# Visualization outputs
+visualizations/
+synful_visualizations/
+*.png
+*.jpg
+*.jpeg
+*.html
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+temp/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sw[pmno]
+
+# MongoDB data
+*.lock
+journal/
+
+# Backup files
+*.bak
+*.backup
+old_environment.yml
