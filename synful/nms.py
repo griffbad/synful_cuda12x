@@ -1,4 +1,4 @@
-from scipy.ndimage import measurements, label, maximum_filter, gaussian_filter
+from scipy.ndimage import label, maximum_filter, gaussian_filter, center_of_mass, sum as ndimage_sum, maximum as ndimage_maximum
 import math
 import numpy as np
 import time
@@ -50,9 +50,9 @@ def find_maxima(
     print("Finding centers, sizes, and maximal values...")
     start = time.time()
     label_ids = np.arange(1, num_blobs + 1)
-    centers = measurements.center_of_mass(blobs, labels, index=label_ids)
-    sizes = measurements.sum(blobs, labels, index=label_ids)
-    maxima = measurements.maximum(predictions, labels, index=label_ids)
+    centers = center_of_mass(blobs, labels, index=label_ids)
+    sizes = ndimage_sum(blobs, labels, index=label_ids)
+    maxima = ndimage_maximum(predictions, labels, index=label_ids)
     print("%.3fs"%(time.time()-start))
 
     centers = {
@@ -66,7 +66,7 @@ def sphere(radius):
 
     grid = np.ogrid[tuple(slice(-r, r + 1) for r in radius)]
     dist = sum([
-        a.astype(np.float)**2/r**2
+        a.astype(np.float64)**2/r**2
         for a, r in zip(grid, radius)
     ])
     return (dist <= 1)
