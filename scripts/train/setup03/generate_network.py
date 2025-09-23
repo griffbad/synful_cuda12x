@@ -1,7 +1,9 @@
 import json
-import torch
 
-from funlib.learn.torch import models
+import numpy as np
+import tensorflow as tf
+
+from funlib.learn.tensorflow import models
 
 
 def mknet(parameter, name):
@@ -14,107 +16,162 @@ def mknet(parameter, name):
     num_heads = 2 if unet_model == 'dh_unet' else 1
     m_loss_scale = parameter['m_loss_scale']
     d_loss_scale = parameter['d_loss_scale']
-    voxel_size = tuple(parameter['voxel_size'])
+    voxel_size = tuple(parameter['voxel_size']) # only needed for computing
+    # field of view. No impact on the actual architecture.
 
     assert unet_model == 'vanilla' or unet_model == 'dh_unet', \
         'unknown unetmodel {}'.format(unet_model)
 
-    # Create U-Net model
-    model = models.UNet(
-        in_channels=1,
-        num_fmaps=fmap_num,
-        fmap_inc_factor=fmap_inc_factor,
-        downsample_factors=downsample_factors,
-        num_heads=num_heads
-    )
+    # Use tf.compat.v1 for compatibility
+    tf.compat.v1.reset_default_graph()
 
-    # Add final conv layers for outputs
-    partner_vectors_head = torch.nn.Conv3d(
-        in_channels=fmap_num * (fmap_inc_factor ** (len(downsample_factors) - 1)),
-        out_channels=3,
-        kernel_size=1
-    )
-    
-    syn_indicator_head = torch.nn.Conv3d(
-        in_channels=fmap_num * (fmap_inc_factor ** (len(downsample_factors) - 1)),
-        out_channels=1,
-        kernel_size=1
-    )
+    # d, h, w
+    raw = tf.compat.v1.placeholder(tf.float32, shape=input_shape)
 
-    # Combine into a complete model
-    class SynfulModel(torch.nn.Module):
-        def __init__(self, unet, partner_head, indicator_head):
-            super().__init__()
-            self.unet = unet
-            self.partner_head = partner_head
-            self.indicator_head = indicator_head
-            
-        def forward(self, x):
-            features = self.unet(x)
-            if isinstance(features, tuple):
-                partner_features, indicator_features = features
-            else:
-                partner_features = indicator_features = features
-                
-            partner_vectors = self.partner_head(partner_features)
-            syn_indicator = self.indicator_head(indicator_features)
-            
-            return partner_vectors, syn_indicator
+    # b=1, c=1, d, h, w
+    raw_batched = tf.reshape(raw, (1, 1) + input_shape)
 
-    complete_model = SynfulModel(model, partner_vectors_head, syn_indicator_head)
+    # b=1, c=fmap_num, d, h, w
+    outputs, fov, voxel_size = models.unet(raw_batched,
+                                           fmap_num, fmap_inc_factor,
+                                           downsample_factors,
+                                           num_heads=num_heads,
+                                           voxel_size=voxel_size)
+    if num_heads == 1:
+        outputs = (outputs, outputs)
+    print('unet has fov in nm: ', fov)
 
-    # Calculate output shape by running a dummy forward pass
-    with torch.no_grad():
-        dummy_input = torch.zeros(1, 1, *input_shape)
-        partner_out, indicator_out = complete_model(dummy_input)
-        output_shape = indicator_out.shape[2:]  # Remove batch and channel dims
+    # b=1, c=3, d, h, w
+    partner_vectors_batched, fov = models.conv_pass(
+        outputs[0],
+        kernel_sizes=[1],
+        num_fmaps=3,
+        activation=None,  # Regression
+        name='partner_vector')
 
+    # b=1, c=1, d, h, w
+    syn_indicator_batched, fov = models.conv_pass(
+        outputs[1],
+        kernel_sizes=[1],
+        num_fmaps=1,
+        activation=None,
+        name='syn_indicator')
+    print('fov in nm: ', fov)
+
+    # d, h, w
+    output_shape = tuple(syn_indicator_batched.get_shape().as_list()[
+                         2:])  # strip batch and channel dimension.
+    syn_indicator_shape = output_shape
+
+    # c=3, d, h, w
+    partner_vectors_shape = (3,) + syn_indicator_shape
+
+    # c=3, d, h, w
+    pred_partner_vectors = tf.reshape(partner_vectors_batched,
+                                      partner_vectors_shape)
+    gt_partner_vectors = tf.compat.v1.placeholder(tf.float32, shape=partner_vectors_shape)
+    vectors_mask = tf.compat.v1.placeholder(tf.float32,
+                                  shape=syn_indicator_shape)  # d,h,w
+    gt_mask = tf.compat.v1.placeholder(tf.bool, shape=syn_indicator_shape)  # d,h,w
+    vectors_mask = tf.cast(vectors_mask, tf.bool)
+
+    # d, h, w
+    pred_syn_indicator = tf.reshape(syn_indicator_batched,
+                                    syn_indicator_shape)  # squeeze batch dimension
+    gt_syn_indicator = tf.compat.v1.placeholder(tf.float32, shape=syn_indicator_shape)
+    indicator_weight = tf.compat.v1.placeholder(tf.float32, shape=syn_indicator_shape)
+
+    partner_vectors_loss_mask = tf.compat.v1.losses.mean_squared_error(
+        gt_partner_vectors,
+        pred_partner_vectors,
+        tf.reshape(
+            vectors_mask,
+            (1,) + syn_indicator_shape),
+        reduction=tf.compat.v1.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
+
+    syn_indicator_loss_weighted = tf.compat.v1.losses.sigmoid_cross_entropy(
+        gt_syn_indicator,
+        pred_syn_indicator,
+        indicator_weight,
+        reduction=tf.compat.v1.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
+    pred_syn_indicator_out = tf.sigmoid(pred_syn_indicator)  # For output.
+
+    iteration = tf.Variable(1.0, name='training_iteration', trainable=False)
+    loss = m_loss_scale * syn_indicator_loss_weighted + d_loss_scale * partner_vectors_loss_mask
+
+    # Monitor in tensorboard.
+    tf.compat.v1.summary.scalar('loss', loss)
+    tf.compat.v1.summary.scalar('loss_vectors', partner_vectors_loss_mask)
+    tf.compat.v1.summary.scalar('loss_indicator', syn_indicator_loss_weighted)
+    summary = tf.compat.v1.summary.merge_all()
+
+    # l=1, d, h, w
     print("input shape : %s" % (input_shape,))
     print("output shape: %s" % (output_shape,))
 
-    # Create config for training
-    config = {
-        'model': 'synful_model',
+    # Train Ops.
+    opt = tf.compat.v1.train.AdamOptimizer(
+        learning_rate=learning_rate,
+        beta1=0.95,
+        beta2=0.999,
+        epsilon=1e-8
+    )
+
+    gvs_ = opt.compute_gradients(loss)
+    optimizer = opt.apply_gradients(gvs_, global_step=iteration)
+
+    tf.compat.v1.train.export_meta_graph(filename=name + '.meta')
+
+    names = {
+        'raw': raw.name,
+        'gt_partner_vectors': gt_partner_vectors.name,
+        'pred_partner_vectors': pred_partner_vectors.name,
+        'gt_syn_indicator': gt_syn_indicator.name,
+        'pred_syn_indicator': pred_syn_indicator.name,
+        'pred_syn_indicator_out': pred_syn_indicator_out.name,
+        'indicator_weight': indicator_weight.name,
+        'vectors_mask': vectors_mask.name,
+        'gt_mask': gt_mask.name,
+        'loss': loss.name,
+        'optimizer': optimizer.name,
+        'summary': summary.name,
         'input_shape': input_shape,
-        'output_shape': tuple(output_shape),
-        'learning_rate': learning_rate,
-        'm_loss_scale': m_loss_scale,
-        'd_loss_scale': d_loss_scale,
-        'loss': 'synful_loss',
-        'optimizer': 'Adam'
+        'output_shape': output_shape
     }
 
-    config['outputs'] = {'pred_syn_indicator_out':
-                        {"out_dims": 1, "out_dtype": "uint8"},
-                    'pred_partner_vectors': {"out_dims": 3,
-                                             "out_dtype": "float32"}}
+    names['outputs'] = {'pred_syn_indicator_out':
+                            {"out_dims": 1, "out_dtype": "uint8"},
+                        'pred_partner_vectors': {"out_dims": 3,
+                                                 "out_dtype": "float32"}}
     if m_loss_scale == 0:
-        config['outputs'].pop('pred_syn_indicator_out')
+        names['outputs'].pop('pred_syn_indicator_out')
     if d_loss_scale == 0:
-        config['outputs'].pop('pred_partner_vectors')
+        names['outputs'].pop('pred_partner_vectors')
 
     with open(name + '_config.json', 'w') as f:
-        json.dump(config, f, indent=4)
+        json.dump(names, f)
 
-    # Save model architecture
-    torch.save(complete_model, f'{name}_model.pth')
-    
-    # Count parameters
-    total_parameters = sum(p.numel() for p in complete_model.parameters())
+    total_parameters = 0
+    for variable in tf.compat.v1.trainable_variables():
+        # shape is an array of tf.Dimension
+        shape = variable.get_shape()
+        variable_parameters = 1
+        for dim in shape:
+            variable_parameters *= dim.value
+        total_parameters += variable_parameters
     print("Number of parameters:", total_parameters)
     print("Estimated size of parameters in GB:",
-          float(total_parameters) * 4 / (1024 * 1024 * 1024))  # 4 bytes per float32
-
-    return complete_model
+          float(total_parameters) * 8 / (1024 * 1024 * 1024))
 
 
 if __name__ == "__main__":
     """
     
-    Script to generate a PyTorch network. Needs to be run before training.
+    Script to generate a tensorflow network. Needs to be run before training.
     
-    This script generates a PyTorch model file (train_net_model.pth) that defines the network 
-    architecture and a config file for the gunpowder train script (train_net_config.json).
+    This script generates a tensorflow meta file (train_net.meta ) that defines network 
+    architecture and training parameters for tensorflow. It also generates a 
+    config file for the gunpowder train script (train_net_config.json).
     
 
     Argument 1: parameter json file path.

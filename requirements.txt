@@ -7,10 +7,10 @@ python-catmaid
 neuroglancer
 cloud-volume
 navis
-daisy>=1.2.0
-funlib.math
-funlib.persistence
-funlib.learn.torch
-gunpowder>=1.4.0
-torch
-torchvision
+https://github.com/funkelab/daisy/archive/refs/heads/main.zip
+https://github.com/funkelab/funlib.math/archive/refs/heads/main.zip
+https://github.com/funkelab/funlib.persistence/archive/refs/heads/main.zip
+https://github.com/funkelab/funlib.learn.tensorflow/archive/refs/heads/main.zip
+https://github.com/funkelab/gunpowder/archive/refs/heads/main.zip
+https://github.com/funkelab/funlib.show.neuroglancer/archive/refs/heads/main.zip
+tensorflow-gpu>=1.15,<2.0

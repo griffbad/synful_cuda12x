@@ -174,28 +174,29 @@ def build_pipeline(parameter, augment=True):
     pipeline += gp.PreCache(
         cache_size=40,
         num_workers=10)
-    pipeline += gp.torch.Train(
-        './train_net_model.pth',
-        loss='synful_loss',
-        optimizer='Adam',
-        lr=net_config['learning_rate'],
+    pipeline += gp.tensorflow.Train(
+        './train_net',
+        optimizer=net_config['optimizer'],
+        loss=net_config['loss'],
+        summary=net_config['summary'],
         log_dir='./tensorboard/',
-        save_every=30000,
+        save_every=30000,  # 10000
         log_every=100,
         inputs={
-            'raw': raw,
-            'gt_partner_vectors': gt_postpre_vectors,
-            'gt_syn_indicator': gt_post_indicator,
-            'vectors_mask': vectors_mask,
-            'indicator_weight': post_loss_weight,
+            net_config['raw']: raw,
+            net_config['gt_partner_vectors']: gt_postpre_vectors,
+            net_config['gt_syn_indicator']: gt_post_indicator,
+            net_config['vectors_mask']: vectors_mask,
+            # Loss weights --> mask
+            net_config['indicator_weight']: post_loss_weight,  # Loss weights
         },
         outputs={
-            'pred_partner_vectors': pred_postpre_vectors,
-            'pred_syn_indicator': pred_post_indicator,
+            net_config['pred_partner_vectors']: pred_postpre_vectors,
+            net_config['pred_syn_indicator']: pred_post_indicator,
         },
         gradients={
-            'pred_partner_vectors': grad_partner_vectors,
-            'pred_syn_indicator': grad_syn_indicator,
+            net_config['pred_partner_vectors']: grad_partner_vectors,
+            net_config['pred_syn_indicator']: grad_syn_indicator,
         },
     )
     # Visualize.

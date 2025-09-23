@@ -53,16 +53,16 @@ pip install -r requirements.txt
 python setup.py install
 ```
 
-**Note**: This repository has been updated to use PyTorch instead of TensorFlow for better compatibility with modern deep learning workflows. The required packages including PyTorch, Gunpowder, Daisy, and Funlib packages will be installed automatically.
+**Note**: This repository has been updated to use the latest versions of Gunpowder, Daisy, and Funlib packages while maintaining TensorFlow 1.15 compatibility for the existing trained models.
 
-For GPU support with PyTorch:
+For GPU support:
 ```bash
-# For CUDA 11.8 (adjust based on your CUDA version)
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+# The requirements.txt already includes tensorflow-gpu
+# Ensure you have the appropriate CUDA drivers installed
 ```
 
 #### Install time
-Installation should take around 5 mins (including PyTorch installation).
+Installation should take around 5-10 mins depending on network speed.
 
 
 Training
