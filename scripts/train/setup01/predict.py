@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import json
 import logging
 import os
@@ -8,6 +6,7 @@ import sys
 import gunpowder as gp
 import numpy as np
 import pymongo
+import tensorflow as tf
 
 from synful.gunpowder import IntensityScaleShiftClip
 
