@@ -53,7 +53,17 @@ pip install -r requirements.txt
 python setup.py install
 ```
 
-**Note**: This repository has been updated to use the latest versions of Gunpowder, Daisy, and Funlib packages while maintaining TensorFlow 1.15 compatibility for the existing trained models.
+**Note**: This repository has been updated to use the latest versions of Gunpowder, Daisy, and Funlib packages while maintaining TensorFlow 1.15 compatibility for the existing trained models. The code has been modernized with `tf.compat.v1` calls to provide a clear upgrade path to TensorFlow 2.x when desired.
+
+## Modernization Updates
+
+This version includes the following modernization improvements:
+
+- ✅ **Latest Package Versions**: Updated to use the latest Gunpowder, Daisy, and Funlib packages from GitHub main branches
+- ✅ **Installation Compatibility**: Fixed git:// protocol issues by using HTTPS URLs  
+- ✅ **TensorFlow Compatibility**: Added `tf.compat.v1` prefixes for future TensorFlow 2.x migration
+- ✅ **Scientific Consistency**: Maintains full compatibility with existing trained models and scientific results
+- ✅ **Enhanced Features**: Access to latest bug fixes and performance improvements in dependencies
 
 For GPU support:
 ```bash

@@ -108,14 +108,15 @@ def predict(
 
     pipeline += gp.IntensityScaleShift(raw, 2, -1)
 
-    pipeline += gp.torch.Predict(
-        os.path.join(setup_dir, 'train_net_model.pth'),
+    pipeline += gp.tensorflow.Predict(
+        os.path.join(setup_dir, 'train_net_checkpoint_%d' % iteration),
         inputs={
-            'raw': raw
+            net_config['raw']: raw
         },
         outputs={
-            'pred_syn_indicator': pred_post_indicator,
+            net_config['pred_syn_indicator_out']: pred_post_indicator,
         },
+        graph=os.path.join(setup_dir, '{}_net.meta'.format(network_config))
     )
 
     if m_property is not None and 'scale' in m_property:
