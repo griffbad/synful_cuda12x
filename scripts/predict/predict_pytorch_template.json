@@ -1,0 +1,61 @@
+{
+  "setup": "setup03",
+  "iteration": 90000,
+  "checkpoint_path": "../train/setup03/checkpoints/epoch_90000.ckpt",
+  "raw_file": "../../../data/cremi/sample_C_padded_20160501.hdf",
+  "raw_dataset": "volumes/raw",
+  "out_directory": "output/",
+  "out_filename": "sample_C_pytorch.zarr",
+  "chunk_size": [64, 512, 512],
+  "overlap": [8, 64, 64],
+  "device": "auto",
+  "threshold": 0.5,
+  "detect_synapses": true,
+  "output_datasets": {
+    "pred_syn_indicator": {
+      "dtype": "float32",
+      "compression": "gzip",
+      "description": "Synaptic location predictions (probability map)"
+    },
+    "pred_partner_vectors": {
+      "dtype": "float32", 
+      "compression": "gzip",
+      "description": "Direction vectors pointing from postsynaptic to presynaptic partners"
+    }
+  },
+  "model_config": {
+    "n_channels": 1,
+    "base_features": 4,
+    "depth": 4,
+    "multitask": true,
+    "activation": "ReLU",
+    "normalization": "BatchNorm3d",
+    "dropout_rate": 0.1,
+    "notes": "Model architecture matching training setup03"
+  },
+  "processing": {
+    "memory_efficient": true,
+    "overlap_blending": true,
+    "batch_size": 1,
+    "notes": "Chunked processing for large volumes with overlap-and-blend"
+  },
+  "legacy_compatibility": {
+    "original_config": "predict_template.json", 
+    "tensorflow_equivalent": {
+      "experiment": "cremi",
+      "setup": "setup01",
+      "iteration": 90000,
+      "configname": "train"
+    },
+    "output_mapping": {
+      "pred_syn_indicator_out": "pred_syn_indicator",
+      "pred_partner_vectors": "pred_partner_vectors"
+    }
+  },
+  "usage": {
+    "description": "Modern PyTorch prediction configuration",
+    "command": "python predict_pytorch.py predict_pytorch_template.json",
+    "with_options": "python predict_pytorch.py predict_pytorch_template.json --device cuda --chunk-size 32 256 256",
+    "debug": "python predict_pytorch.py predict_pytorch_template.json --debug"
+  }
+}

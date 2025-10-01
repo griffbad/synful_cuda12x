@@ -1,4 +1,120 @@
+# Synful Project .gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyTorch
+*.pth
+*.ckpt
+*.pt
+
+# Training results and logs
+/scripts/train/*/logs/
+/scripts/train/*/tensorboard/
+/scripts/train/*/tensorboard_logs/
+/scripts/train/*/wandb/
+/scripts/train/*/checkpoints/
+/scripts/train/*/snapshots/
+/scripts/train/*/*.ckpt
+/scripts/train/*/test_results/
+/scripts/train/*/synful_test_results/
+
+# Prediction results
+/scripts/predict/test_prediction_output/
+/scripts/predict/test_volume.zarr/
+/scripts/predict/*.zarr
+/scripts/predict/*.hdf5
+/scripts/predict/*.npz
+
+# Test results and temporary files
+synful_test_results/
+test_results/
+*_test_results/
+test_*.py
+quick_test_*.py
+simple_test_*.py
+example_*.py
+
+# Data files (typically large)
+*.zarr/
+*.h5
+*.hdf5
+*.hdf
+data/
+/data/
+volumes/
+predictions/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Environment and IDE
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+tensorboard/
+wandb/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# CUDA
+*.gpu
+
+# Specific to this project - exclude documentation artifacts
+MODERNIZATION_SUCCESS.md
+MODERNIZATION_SUCCESS_REPORT.py
+SCRIPT_MODERNIZATION_COMPLETE.md
+ZARR_MONGODB_INTEGRATION.md
+
+# Legacy items
 *.sw[pmno]
 *.pyc
 .coverage
-*.egg-info

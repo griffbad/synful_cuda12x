@@ -1,0 +1,74 @@
+{
+    "model": {
+        "architecture": "UNet3D",
+        "n_channels": 1,
+        "base_features": 4,
+        "depth": 4,
+        "multitask": true,
+        "activation": "ReLU",
+        "normalization": "BatchNorm3d",
+        "dropout_rate": 0.1,
+        "notes": "Converted from original: fmap_num=4, fmap_inc_factor=5, unet_model=dh_unet"
+    },
+    "data": {
+        "input_size": [42, 430, 430],
+        "voxel_size": [40, 4, 4],
+        "batch_size": 1,
+        "num_workers": 4,
+        "augmentation": {
+            "elastic": true,
+            "intensity": true,
+            "spatial": true,
+            "noise": false
+        },
+        "reject_probability": 0.95,
+        "blob_radius": 10,
+        "d_blob_radius": 100,
+        "blob_mode": "ball",
+        "notes": "Original data processing parameters preserved"
+    },
+    "training": {
+        "max_epochs": 700,
+        "learning_rate": 5e-5,
+        "optimizer": "Adam",
+        "scheduler": "ReduceLROnPlateau",
+        "loss_weights": {
+            "mask": 1.0,
+            "direction": 1.0
+        },
+        "loss_combination": "sum",
+        "val_check_interval": 1000,
+        "save_every": 30000,
+        "gradient_clip_val": 1.0,
+        "early_stopping_patience": 50,
+        "precision": "16-mixed",
+        "cliprange": [7e-4, 0.9993],
+        "d_scale": 1,
+        "notes": "Converted from original: max_iteration=700000, learning_rate=0.5e-4"
+    },
+    "legacy_mapping": {
+        "input_size": "data.input_size - same format",
+        "downsample_factors": "model.depth - derived from [[1,3,3], [1,3,3], [3,3,3]]",
+        "fmap_num": "model.base_features - same value (4)",
+        "fmap_inc_factor": "model architecture - controls feature scaling (5)",
+        "unet_model": "model.multitask - dh_unet -> true, vanilla -> false",
+        "learning_rate": "training.learning_rate - same value (0.5e-4)",
+        "loss_comb_type": "training.loss_combination - sum",
+        "m_loss_scale": "training.loss_weights.mask - same value (1.0)",
+        "d_loss_scale": "training.loss_weights.direction - same value (1.0)",
+        "reject_probability": "data.reject_probability - same value (0.95)",
+        "blob_radius": "data.blob_radius - same value (10)",
+        "max_iteration": "training.max_epochs - converted 700000 -> 700 epochs",
+        "blob_mode": "data.blob_mode - same value (ball)",
+        "d_scale": "training.d_scale - same value (1)",
+        "d_blob_radius": "data.d_blob_radius - same value (100)",
+        "cliprange": "training.cliprange - same values [7e-4, 0.9993]",
+        "voxel_size": "data.voxel_size - same format [40, 4, 4]"
+    },
+    "usage": {
+        "description": "Modern PyTorch configuration derived from original TensorFlow parameter.json",
+        "train_command": "python train_pytorch.py parameter_pytorch.json",
+        "train_synthetic": "python train_pytorch.py parameter_pytorch.json --synthetic --epochs 5",
+        "compatibility": "Maintains same semantic meaning as original parameters with modern PyTorch equivalents"
+    }
+}
