@@ -10,7 +10,7 @@ from typing import Optional, Union, List
 
 import numpy as np
 import gunpowder as gp
-from gunpowder import BatchFilter, ArrayKey, PointsKey
+from gunpowder import BatchFilter, ArrayKey, GraphKey as PointsKey
 
 logger = logging.getLogger(__name__)
 

@@ -13,9 +13,22 @@ import numpy as np
 import h5py
 
 import gunpowder as gp
-from gunpowder import Batch, BatchProvider, Coordinate, Points, PointsKey, PointsSpec
-from gunpowder.contrib.points import PreSynPoint, PostSynPoint
+from gunpowder import Batch, BatchProvider, Coordinate, Graph as Points, GraphKey as PointsKey, GraphSpec as PointsSpec, Node
+# from gunpowder.contrib.points import PreSynPoint, PostSynPoint  # May not exist in current version
 from gunpowder.profiling import Timing
+
+# Simple replacements for PreSynPoint and PostSynPoint
+class PreSynPoint(Node):
+    def __init__(self, location, location_id, synapse_id, partner_ids):
+        super().__init__(id=location_id, location=location)
+        self.synapse_id = synapse_id
+        self.partner_ids = partner_ids
+
+class PostSynPoint(Node):
+    def __init__(self, location, location_id, synapse_id, partner_ids):
+        super().__init__(id=location_id, location=location)
+        self.synapse_id = synapse_id
+        self.partner_ids = partner_ids
 
 logger = logging.getLogger(__name__)
 

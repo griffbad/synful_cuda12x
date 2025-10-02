@@ -15,7 +15,7 @@ import numpy as np
 import numpy.typing as npt
 
 import gunpowder as gp
-from gunpowder import BatchFilter, ArrayKey, PointsKey
+from gunpowder import BatchFilter, ArrayKey, GraphKey as PointsKey
 from gunpowder import Array, ArraySpec, Coordinate, PointsSpec, Roi
 from gunpowder.morphology import enlarge_binary_map
 from scipy.spatial import KDTree
