@@ -48,14 +48,17 @@ MANIFEST
 /scripts/predict/*.hdf5
 /scripts/predict/*.npz
 
-# Test results and temporary files
+# Test results and temporary files (but allow proper test suite)
 synful_test_results/
 test_results/
 *_test_results/
-test_*.py
-quick_test_*.py
-simple_test_*.py
-example_*.py
+# Allow tests/ directory but ignore temporary test files in root
+/test_*.py
+/quick_test_*.py
+/simple_test_*.py
+/example_*.py
+# Allow tests in tests/ directory
+!/tests/
 
 # Data files (typically large)
 *.zarr/
