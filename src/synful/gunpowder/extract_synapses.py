@@ -62,8 +62,8 @@ class ExtractSynapses(BatchFilter):
 
     def setup(self):
         """Setup the node to provide source and target points."""
-        self.spec_src = gp.PointsSpec()
-        self.spec_trg = gp.PointsSpec()
+        self.spec_src = gp.GraphSpec()
+        self.spec_trg = gp.GraphSpec()
 
         self.provides(self.srcpoints, self.spec_src)
         self.provides(self.trgpoints, self.spec_trg)

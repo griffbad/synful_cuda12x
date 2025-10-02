@@ -1,0 +1,47 @@
+{
+  "setup": "setup03",
+  "iteration": "final",
+  "checkpoint_path": "../train/setup03/setup03_modernized_final.ckpt",
+  "raw_file": "test_volume.zarr",
+  "raw_dataset": "raw",
+  "out_directory": "test_prediction_output/",
+  "out_filename": "test_prediction_results.zarr",
+  "chunk_size": [32, 128, 128],
+  "overlap": [4, 16, 16],
+  "device": "auto",
+  "threshold": 0.5,
+  "detect_synapses": true,
+  "output_datasets": {
+    "pred_syn_indicator": {
+      "dtype": "float32",
+      "compression": "gzip",
+      "description": "Synaptic location predictions (probability map)"
+    },
+    "pred_partner_vectors": {
+      "dtype": "float32", 
+      "compression": "gzip",
+      "description": "Direction vectors pointing from postsynaptic to presynaptic partners"
+    }
+  },
+  "model_config": {
+    "n_channels": 1,
+    "base_features": 4,
+    "depth": 4,
+    "multitask": true,
+    "activation": "ReLU",
+    "normalization": "BatchNorm3d",
+    "dropout_rate": 0.1,
+    "notes": "Model architecture matching training setup03"
+  },
+  "processing": {
+    "memory_efficient": true,
+    "overlap_blending": true,
+    "batch_size": 1,
+    "notes": "Small chunked processing for testing"
+  },
+  "test_config": {
+    "description": "Test configuration using synthetic data and trained model",
+    "synthetic_volume_size": [64, 256, 256],
+    "create_test_data": true
+  }
+}
